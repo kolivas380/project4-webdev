@@ -53,4 +53,18 @@ document.getElementById('add-btn').addEventListener('click', (event => {
     })
 }), false);
 
+function displayTableData(incidents) {
+    const table = document.getElementById(incidentTable)
+
+    incidents.forEach(element => {
+        let row = `
+        <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>
+        `;
+    });
+}
 

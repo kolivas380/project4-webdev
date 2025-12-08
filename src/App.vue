@@ -38,6 +38,11 @@ let map = reactive(
     }
 );
 
+let crimes = ref([]);
+let visibleCrimes = ref([]);
+let neighborhoods = ref([]);
+let codes = ref([]);
+
 // Vue callback for once <template> HTML has been added to web page
 onMounted(() => {
     // Create Leaflet map (set bounds and valied zoom levels)
@@ -70,8 +75,27 @@ onMounted(() => {
 // FUNCTIONS
 // Function called once user has entered REST API URL
 function initializeCrimes() {
-    // TODO: get code and neighborhood data
-    //       get initial 1000 crimes
+    // implement user api call
+
+    let codes_res = await fetch(`${crime_url.value}/codes`)
+    let codes_json = await codes_res.json();
+    codes_value = codes_json
+
+
+    let incidents_res = await fetch(`${crime_url.value}/incidents?limit=1000`)
+    let incidents_json = await incidents_res.json();
+    incidents.value = incidents_json.map(c => {{
+        case_number: c.case_number,
+        date: c.date,
+        time: c.time,
+        code: c.code,
+        incident: c.incident,
+        police_grid: c.police_grid,
+        neighborhood_number: c.neighborhood_number,
+        block: c.block,
+        lat: parseFloat(c.lat || c.latitude || 0),
+        lng: parseFloat(c.lon || c.longitude || 0)
+    }})
 }
 
 // Function called when user presses 'OK' on dialog box

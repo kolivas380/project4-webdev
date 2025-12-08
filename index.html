@@ -51,6 +51,15 @@
 
     <button id="add-btn" type="button">Submit</button>
 
+    <tbody>
+        <tr v-for="c in incidents" :key="c.case_numbere">
+            <td>{{c.date}} </td>
+            <td>{{c.neighborhood_name}}</td>
+            <td>{{c.incident}}</td>
+            <td>{{c.police_grid}}</td>
+        </tr>
+    </tbody>
+
     <p id="distance"></p>
     <!-- Foundation CSS Framework: include before closing <body> tag -->
     <script src="js/vendor/jquery.js"></script>
