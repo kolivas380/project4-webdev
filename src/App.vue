@@ -38,6 +38,11 @@ let map = reactive(
     }
 );
 
+let crimes = ref([]);
+let visibleCrimes = ref([]);
+let neighborhoods = ref([]);
+let codes = ref([]);
+
 // Vue callback for once <template> HTML has been added to web page
 onMounted(() => {
     // Create Leaflet map (set bounds and valied zoom levels)
@@ -69,9 +74,33 @@ onMounted(() => {
 
 // FUNCTIONS
 // Function called once user has entered REST API URL
-function initializeCrimes() {
-    // TODO: get code and neighborhood data
-    //       get initial 1000 crimes
+async function initializeCrimes() {
+        const baseUrl = crime_url.value.replace(/\/+$/, "");
+        console.log("FETCHING FROM:", baseUrl);
+
+        //Get codes
+        const codes_res = await fetch(`${baseUrl}/codes`);
+        const codes_json = await codes_res.json();
+        codes.value = codes_json.rows;  // IMPORTANT FIX
+
+        //Get incidents
+        const incidents_res = await fetch(`${baseUrl}/incidents?limit=1000`);
+        const incidents_json = await incidents_res.json();
+
+        console.log("Raw incidents:", incidents_json);
+
+        crimes.value = incidents_json.map(c => ({
+            case_number: c.case_number,
+            date: c.date,
+            time: c.time,
+            code: c.code,
+            incident: c.incident,
+            police_grid: c.police_grid,
+            neighborhood_number: c.neighborhood_number,
+            block: c.block
+        }));
+        visibleCrimes.value = crimes.value;
+        console.log("Mapped crimes length:", crimes.value.length);
 }
 
 // Function called when user presses 'OK' on dialog box
@@ -103,6 +132,30 @@ function closeDialog() {
             <div id="leafletmap" class="cell auto"></div>
         </div>
     </div>
+    <!-- Crime Table -->
+     <div>
+        <h2>Crime Incidents</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Neighborhood</th>
+                <th>Incident</th>
+                <th>Grid</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="c in visibleCrimes" :key="c.case_number">
+            <td>{{c.date}} </td>
+            <td>{{c.neighborhood_number}}</td>
+            <td>{{c.incident}}</td>
+            <td>{{c.police_grid}}</td>
+            <td><button>Delete</button></td>
+            </tr>
+        </tbody>
+    </table>
+     </div>
 </template>
 
 <style scoped>
@@ -133,5 +186,9 @@ function closeDialog() {
 .dialog-error {
     font-size: 1rem;
     color: #D32323;
+}
+
+td {
+    color:#D32323;
 }
 </style>
