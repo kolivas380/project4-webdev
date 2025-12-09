@@ -69,6 +69,26 @@ onMounted(() => {
     .catch((error) => {
         console.log('Error:', error);
     });
+
+    map.leaflet.on('moveend', async () => {
+            const center = map.leaflet.getCenter();
+            let {lat,lng} = clampLatLng(center.lat, center.lng);
+
+            map.center.lat = lat;
+            map.center.lng = lng;
+
+            const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+            const result = await fetch(url, {
+                headers: { 'User-Agent': 'stpaul-crime-project/1.0 (student@email.com)'}
+                });
+            const json_data = await result.json();
+            
+            if(json_data && json_data.display_name) {
+            locationInput.value = json_data.display_name;
+        } else {
+            locationInput.value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        }
+    });
 });
 
 
@@ -103,6 +123,57 @@ async function initializeCrimes() {
         console.log("Mapped crimes length:", crimes.value.length);
 }
 
+let locationInput = ref('');
+
+function clampLatLng(lat, lng){
+    const minLat = map.bounds.se.lat;
+    const maxLat = map.bounds.nw.lat;
+    const minLng = map.bounds.nw.lng;
+    const maxLng = map.bounds.se.lng;
+
+    const clampedLat = Math.min(Math.max(lat, minLat), maxLat);
+    const clampedLng = Math.min(Math.max(lng, minLng), maxLng);
+    return { lat: clampedLat, lng: clampedLng };
+}
+async function getLocation() {
+    const selectedLatLngValues = locationInput.value.trim();
+    if(!selectedLatLngValues) return;
+
+    let lat;
+    let lng;
+
+    const formattedValues = selectedLatLngValues.split(',');
+    if(formattedValues.length === 2 && !isNaN(parseFloat(formattedValues[0]))&& !isNaN(parseFloat(formattedValues[1]))) {
+            lat = parseFloat(formattedValues[0]);
+            lng = parseFloat(formattedValues[1]);
+    }
+    else {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(selectedLatLngValues)}&format=jsonv2`;
+
+        const result = await fetch(url, {
+                headers: { 'User-Agent': 'stpaul-crime-project/1.0 (student@email.com)'}
+                });
+        const json_data = await result.json();
+
+        if(!json_data.length) {
+            console.log("No geocode result");
+            return;
+        }
+        lat = parseFloat(json_data[0].lat);
+        lng = parseFloat(json_data[0].lon);
+    }
+
+    const { lat: cLat, lng: cLng } = clampLatLng(lat, lng);
+    map.center.lat = cLat;
+    map.center.lng = cLng;
+
+    if(map.leaflet) {
+        const zoom = Math.max(map.zoom, 14)
+        map.zoom = zoom;
+        map.leaflet.setView([cLat, cLng], zoom);
+    }
+}
+
 // Function called when user presses 'OK' on dialog box
 function closeDialog() {
     let dialog = document.getElementById('rest-dialog');
@@ -119,6 +190,7 @@ function closeDialog() {
 </script>
 
 <template>
+    <!-- St Paul Crime API Input -->
     <dialog id="rest-dialog" open>
         <h1 class="dialog-header">St. Paul Crime REST API</h1>
         <label class="dialog-label">URL: </label>
@@ -132,6 +204,17 @@ function closeDialog() {
             <div id="leafletmap" class="cell auto"></div>
         </div>
     </div>
+
+    <!-- Lat/Lon Input Box -->
+    <dialog id="location-dialog" open>
+        <h1 class="dialog-header">St. Paul Crime Latitude and Longitude</h1>
+        <label class="dialog-label">Latitude: </label>
+        <input id="dialog-url" class="dialog-input" type="url" v-model="locationInput" placeholder="Enter an address or lat/lon" />
+        <p class="dialog-error" v-if="dialog_err">Error: must enter an address</p>
+        <br/>
+        <button class="button" type="button" @click="getLocation">Go</button>
+    </dialog>
+
     <!-- Crime Table -->
      <div>
         <h2>Crime Incidents</h2>
