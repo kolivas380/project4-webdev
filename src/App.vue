@@ -206,19 +206,22 @@ function closeDialog() {
     </div>
 
     <!-- Lat/Lon Input Box -->
+    <div>
     <dialog id="location-dialog" open>
         <h1 class="dialog-header">St. Paul Crime Latitude and Longitude</h1>
-        <label class="dialog-label">Latitude: </label>
-        <input id="dialog-url" class="dialog-input" type="url" v-model="locationInput" placeholder="Enter an address or lat/lon" />
+        <label class="dialog-label">Location: </label>
+        <input id="dialog-url" class="dialog-input" type="url" v-model="locationInput" placeholder="Enter a location" />
         <p class="dialog-error" v-if="dialog_err">Error: must enter an address</p>
         <br/>
-        <button class="button" type="button" @click="getLocation">Go</button>
+        <button class="button" type="button" @click="() => { getLocation(); closeDialog(); } ">Go</button>
     </dialog>
+    </div>
+
 
     <!-- Crime Table -->
-     <div>
+     <div id="crime-table-container">
         <h2>Crime Incidents</h2>
-    <table>
+    <table id="crime-table">
         <thead>
             <tr>
                 <th>Date</th>
@@ -270,8 +273,20 @@ function closeDialog() {
     font-size: 1rem;
     color: #D32323;
 }
-
+#location-dialog {
+    position: relative;
+}
 td {
     color:#D32323;
+}
+
+#crime-table {
+    width: 100%;
+}
+
+#crime-table-container {
+    max-width: 90%;
+    margin: 2rem auto;
+    padding: 1rem;
 }
 </style>
