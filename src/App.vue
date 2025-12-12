@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
 
+
 let crime_url = ref('');
 let dialog_err = ref(false);
 let map = reactive(
@@ -37,6 +38,7 @@ let map = reactive(
         ]
     }
 );
+
 
 // Vue callback for once <template> HTML has been added to web page
 onMounted(() => {
@@ -89,21 +91,39 @@ function closeDialog() {
 }
 </script>
 
+
 <template>
-    <dialog id="rest-dialog" open>
-        <h1 class="dialog-header">St. Paul Crime REST API</h1>
-        <label class="dialog-label">URL: </label>
-        <input id="dialog-url" class="dialog-input" type="url" v-model="crime_url" placeholder="http://localhost:8000" />
-        <p class="dialog-error" v-if="dialog_err">Error: must enter valid URL</p>
-        <br/>
-        <button class="button" type="button" @click="closeDialog">OK</button>
-    </dialog>
-    <div class="grid-container ">
-        <div class="grid-x grid-padding-x">
-            <div id="leafletmap" class="cell auto"></div>
+
+    <div class="grid-container full" style="margin-bottom: 0; margin-top: 20px;">
+        <!-- Header -->
+        <div class="grid-x">
+            <div class="cell medium-11 text-left">
+                <h1 class="font-effect-shadow-multiple">St. Paul Crime Watch</h1>
+            </div>
+            <div class="cell medium-1 align-middle text-right">
+                <a href="about.html">About</a>
+            </div>
         </div>
     </div>
+
+    <div class="gradient-line"></div>
+    </br>
+
+  <div id="app">
+
+    <!-- NEW SPA NAVIGATION -->
+    <nav style="margin-top:20px;">
+      <router-link to="/">Map</router-link>
+      <router-link to="/report">Report</router-link>
+    </nav>
+
+    <!-- NEW: Page content -->
+    <router-view></router-view>
+
+  </div>
 </template>
+
+
 
 <style scoped>
 #rest-dialog {
