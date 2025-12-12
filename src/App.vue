@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, onMounted, computed } from 'vue'
 
 let crime_url = ref('');
 let dialog_err = ref(false);
@@ -91,7 +91,7 @@ onMounted(async () => {
 
             const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
             const result = await fetch(url, {
-                headers: { 'User-Agent': 'stpaul-crime-project/1.0 (student@email.com)'}
+                headers: { 'User-Agent': 'stpaul-crime-project/1.0 (oliv1819@stthomas.edu)'}
                 });
             const json_data = await result.json();
             
@@ -103,6 +103,21 @@ onMounted(async () => {
     });
 });
 
+//Function for filtering
+const filteredNeighborhoods = ref([]);
+const defaultMaxIncidents = ref(50);
+const filterByNeighborhood = computed(() => {
+    return crimes.value
+        .reduce((acc, c) => {
+        //switch to neighborhood_name
+            if(c.neighborhood_number && !acc.includes(c.neighborhood_number)) {
+                acc.push(c.neighborhood_number);
+            }
+        return acc;
+    }, [])
+    .sort()
+});
+
 // FUNCTIONS
 // Function called once user has entered REST API URL
 async function initializeCrimes() {
@@ -112,7 +127,7 @@ async function initializeCrimes() {
         //Get codes
         const codes_res = await fetch(`${baseUrl}/codes`);
         const codes_json = await codes_res.json();
-        codes.value = codes_json.rows;  // IMPORTANT FIX
+        codes.value = codes_json.rows;  
 
         //Get incidents
         const incidents_res = await fetch(`${baseUrl}/incidents?limit=1000`);
@@ -267,7 +282,7 @@ async function getLocation() {
         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(selectedLatLngValues)}&format=jsonv2`;
 
         const result = await fetch(url, {
-                headers: { 'User-Agent': 'stpaul-crime-project/1.0 (student@email.com)'}
+                headers: { 'User-Agent': 'stpaul-crime-project/1.0 (oliv1819@stthomas.edu)'}
                 });
         const json_data = await result.json();
 
@@ -333,6 +348,27 @@ function closeDialog() {
     </dialog>
     </div>
 
+    <!-- Filter box -->
+     <div id="filter-box-container">
+        <h3>Filter</h3>
+        <div id="neighborhood-list">
+            <label v-for="name in filteredNeighborhoods" :key="name" class="neighborhood-item" >
+                <input type="checkbox" :value="name" v-model="selectedNeighborhoods"/>
+                {{ name }}
+            </label>
+        </div>
+     </div>
+     <div id="filters">
+        <div id="filter-box-container">
+            <label for="max-incidents">Max Incidents to display:</label>
+             <select id="max-incidents" v-model.number="maxIncidents">
+            <option v-for="n in maxIncidentOptions" :key="n" :value="n">
+        {{ n }}
+      </option>
+    </select>
+        </div>
+     </div>
+
     <!-- Crime Table -->
      <div id="crime-table-container">
         <h2>Crime Incidents</h2>
@@ -348,6 +384,13 @@ function closeDialog() {
             </tr>
         </thead>
         <tbody>
+            <!-- change this to use filtered crimes -->
+            <tr v-for="c in filterByNeighborhood" :key="c.case_number">
+            <td>{{c.date}} </td>
+            <td>{{c.neighborhood_number}}</td>
+            <td>{{c.incident}}</td>
+            <td>{{c.police_grid}}</td>
+            <td><button>Delete</button></td>
             <tr v-for="c in visibleCrimes" :key="c.case_number">
                 <td>{{ c.date }}</td>
                 <td>{{ map.neighborhood_markers[c.neighborhood_number]?.name || 'Unknown' }}</td>
@@ -405,6 +448,15 @@ td {
     max-width: 90%;
     margin: 2rem auto;
     padding: 1rem;
+}
+
+#filter-box-container {
+    max-width: 90%;
+    margin: 2rem auto;
+    padding: 1rem;
+}
+#crime-table-container {
+    width: 100%;
 }
 </style>
 <style>
