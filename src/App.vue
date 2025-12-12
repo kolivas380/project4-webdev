@@ -79,7 +79,7 @@ onMounted(() => {
 
             const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
             const result = await fetch(url, {
-                headers: { 'User-Agent': 'stpaul-crime-project/1.0 (student@email.com)'}
+                headers: { 'User-Agent': 'stpaul-crime-project/1.0 (oliv1819@stthomas.edu)'}
                 });
             const json_data = await result.json();
             
@@ -115,7 +115,7 @@ async function initializeCrimes() {
         //Get codes
         const codes_res = await fetch(`${baseUrl}/codes`);
         const codes_json = await codes_res.json();
-        codes.value = codes_json.rows;  // IMPORTANT FIX
+        codes.value = codes_json.rows;  
 
         //Get incidents
         const incidents_res = await fetch(`${baseUrl}/incidents?limit=1000`);
@@ -165,7 +165,7 @@ async function getLocation() {
         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(selectedLatLngValues)}&format=jsonv2`;
 
         const result = await fetch(url, {
-                headers: { 'User-Agent': 'stpaul-crime-project/1.0 (student@email.com)'}
+                headers: { 'User-Agent': 'stpaul-crime-project/1.0 (oliv1819@stthomas.edu)'}
                 });
         const json_data = await result.json();
 
