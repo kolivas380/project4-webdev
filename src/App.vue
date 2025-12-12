@@ -110,8 +110,8 @@ const filterByNeighborhood = computed(() => {
     return crimes.value
         .reduce((acc, c) => {
         //switch to neighborhood_name
-            if(c.neighborhood_number && !acc.includes(c.neighborhood_number)) {
-                acc.push(c.neighborhood_number);
+            if(c.neighborhood_number.name && !acc.includes(c.neighborhood_number.name)) {
+                acc.push(c.neighborhood_number.name);
             }
         return acc;
     }, [])
@@ -253,7 +253,6 @@ function showCrimeOnMap(crime) {
         behavior: 'smooth',
         block: 'center'
     });
-
 }
 
 function clampLatLng(lat, lng){
@@ -338,7 +337,7 @@ function closeDialog() {
 
     <!-- Lat/Lon Input Box -->
     <div>
-    <dialog id="location-dialog">
+    <dialog id="location-dialog" open>
         <h1 class="dialog-header">St. Paul Crime Latitude and Longitude</h1>
         <label class="dialog-label">Location: </label>
         <input id="location-input" class="dialog-input" type="text" v-model="locationInput" placeholder="Enter a location or lat/lng" />
@@ -385,12 +384,6 @@ function closeDialog() {
         </thead>
         <tbody>
             <!-- change this to use filtered crimes -->
-            <tr v-for="c in filterByNeighborhood" :key="c.case_number">
-            <td>{{c.date}} </td>
-            <td>{{c.neighborhood_number}}</td>
-            <td>{{c.incident}}</td>
-            <td>{{c.police_grid}}</td>
-            <td><button>Delete</button></td>
             <tr v-for="c in visibleCrimes" :key="c.case_number">
                 <td>{{ c.date }}</td>
                 <td>{{ map.neighborhood_markers[c.neighborhood_number]?.name || 'Unknown' }}</td>
