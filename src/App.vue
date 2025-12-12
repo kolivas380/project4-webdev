@@ -349,15 +349,14 @@ function closeDialog() {
 
     <!-- Filter box -->
      <div id="filter-box-container">
-        <h3>Filter</h3>
+        <h2 style="color: black;">Filter</h2>
         <div id="neighborhood-list">
-            <label v-for="name in filteredNeighborhoods" :key="name" class="neighborhood-item" >
+            <label v-for="name in filterByNeighborhood" :key="name" class="neighborhood-item" >
                 <input type="checkbox" :value="name" v-model="selectedNeighborhoods"/>
                 {{ name }}
             </label>
         </div>
-     </div>
-     <div id="filters">
+        <div id="filters">
         <div id="filter-box-container">
             <label for="max-incidents">Max Incidents to display:</label>
              <select id="max-incidents" v-model.number="maxIncidents">
@@ -366,6 +365,7 @@ function closeDialog() {
       </option>
     </select>
         </div>
+     </div>
      </div>
 
     <!-- Crime Table -->
@@ -447,6 +447,7 @@ td {
     max-width: 90%;
     margin: 2rem auto;
     padding: 1rem;
+    background-color: white;
 }
 #crime-table-container {
     width: 100%;
