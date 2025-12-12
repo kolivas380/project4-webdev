@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, onMounted, computed } from 'vue'
 
 let crime_url = ref('');
 let dialog_err = ref(false);
@@ -91,6 +91,20 @@ onMounted(() => {
     });
 });
 
+//Function for filtering
+const filteredNeighborhoods = ref([]);
+const defaultMaxIncidents = ref(50);
+const filterByNeighborhood = computed(() => {
+    return crimes.value
+        .reduce((acc, c) => {
+        //switch to neighborhood_name
+            if(c.neighborhood_number && !acc.includes(c.neighborhood_number)) {
+                acc.push(c.neighborhood_number);
+            }
+        return acc;
+    }, [])
+    .sort()
+});
 
 // FUNCTIONS
 // Function called once user has entered REST API URL
@@ -217,6 +231,26 @@ function closeDialog() {
     </dialog>
     </div>
 
+    <!-- Filter box -->
+     <div id="filter-box-container">
+        <h3>Filter</h3>
+        <div id="neighborhood-list">
+            <label v-for="name in filteredNeighborhoods" :key="name" class="neighborhood-item" >
+                <input type="checkbox" :value="name" v-model="selectedNeighborhoods"/>
+                {{ name }}
+            </label>
+        </div>
+     </div>
+     <div id="filters">
+        <div id="filter-box-container">
+            <label for="max-incidents">Max Incidents to display:</label>
+             <select id="max-incidents" v-model.number="maxIncidents">
+            <option v-for="n in maxIncidentOptions" :key="n" :value="n">
+        {{ n }}
+      </option>
+    </select>
+        </div>
+     </div>
 
     <!-- Crime Table -->
      <div id="crime-table-container">
@@ -232,7 +266,8 @@ function closeDialog() {
             </tr>
         </thead>
         <tbody>
-            <tr v-for="c in visibleCrimes" :key="c.case_number">
+            <!-- change this to use filtered crimes -->
+            <tr v-for="c in filterByNeighborhood" :key="c.case_number">
             <td>{{c.date}} </td>
             <td>{{c.neighborhood_number}}</td>
             <td>{{c.incident}}</td>
@@ -288,5 +323,14 @@ td {
     max-width: 90%;
     margin: 2rem auto;
     padding: 1rem;
+}
+
+#filter-box-container {
+    max-width: 90%;
+    margin: 2rem auto;
+    padding: 1rem;
+}
+#crime-table-container {
+    width: 100%;
 }
 </style>
