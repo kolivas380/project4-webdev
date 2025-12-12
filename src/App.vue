@@ -16,36 +16,38 @@ let map = reactive(
             nw: {lat: 45.008206, lng: -93.217977},
             se: {lat: 44.883658, lng: -92.993787}
         },
-        neighborhood_markers: [
-            {location: [44.942068, -93.020521], marker: null},
-            {location: [44.977413, -93.025156], marker: null},
-            {location: [44.931244, -93.079578], marker: null},
-            {location: [44.956192, -93.060189], marker: null},
-            {location: [44.978883, -93.068163], marker: null},
-            {location: [44.975766, -93.113887], marker: null},
-            {location: [44.959639, -93.121271], marker: null},
-            {location: [44.947700, -93.128505], marker: null},
-            {location: [44.930276, -93.119911], marker: null},
-            {location: [44.982752, -93.147910], marker: null},
-            {location: [44.963631, -93.167548], marker: null},
-            {location: [44.973971, -93.197965], marker: null},
-            {location: [44.949043, -93.178261], marker: null},
-            {location: [44.934848, -93.176736], marker: null},
-            {location: [44.913106, -93.170779], marker: null},
-            {location: [44.937705, -93.136997], marker: null},
-            {location: [44.949203, -93.093739], marker: null}
-        ]
+        neighborhood_markers: {
+            1: { name: "Highwood Hills", lat: 44.942068, lng: -93.020521 },
+            2: { name: "Greater East Side", lat: 44.977413, lng: -93.025156 },
+            3: { name: "West Side", lat: 44.931244, lng: -93.079578 },
+            4: { name: "Dayton's Bluff", lat: 44.956192, lng: -93.060189 },
+            5: { name: "Payne-Phalen", lat: 44.978883, lng: -93.068163 },
+            6: { name: "North End", lat: 44.975766, lng: -93.113887 },
+            7: { name: "Frogtown", lat: 44.959639, lng: -93.121271 },
+            8: { name: "Summit-University", lat: 44.947700, lng: -93.128505 },
+            9: { name: "West Seventh/Fort Road", lat: 44.930276, lng: -93.119911 },
+            10: { name: "Como Park", lat: 44.982752, lng: -93.147910 },
+            11: { name: "Hamline Midway", lat: 44.963631, lng: -93.167548 },
+            12: { name: "Saint Anthony Park", lat: 44.973971, lng: -93.197965 },
+            13: { name: "Union Park", lat: 44.949043, lng: -93.178261 },
+            14: { name: "Macalester-Groveland", lat: 44.934848, lng: -93.176736 },
+            15: { name: "Highland Park", lat: 44.913106, lng: -93.170779 },
+            16: { name: "Summit Hill", lat: 44.937705, lng: -93.136997 },
+            17: { name: "Downtown", lat: 44.949203, lng: -93.093739 }
+        }
     }
 );
 
 let crimes = ref([]);
 let visibleCrimes = ref([]);
-let neighborhoods = ref([]);
 let codes = ref([]);
+let activeCrimeMarker = ref(null);
+let locationInput = ref('');
+let geocodedData = [];
 
 // Vue callback for once <template> HTML has been added to web page
-onMounted(() => {
-    // Create Leaflet map (set bounds and valied zoom levels)
+onMounted(async () => {
+    // Create Leaflet map (set bounds and valid zoom levels)
     map.leaflet = L.map('leafletmap').setView([map.center.lat, map.center.lng], map.zoom);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -68,6 +70,16 @@ onMounted(() => {
     })
     .catch((error) => {
         console.log('Error:', error);
+    });
+
+    // Add markers for St. Paul neighborhoods
+    Object.entries(map.neighborhood_markers).forEach(([key, neighborhood]) => {
+        neighborhood.marker = L.marker([neighborhood.lat, neighborhood.lng], {icon: L.icon({
+            iconUrl: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+            iconSize: [30, 30]
+        })})
+            .bindPopup(`<b>${neighborhood.name}<br>Crimes: 0</b>`)
+            .addTo(map.leaflet);
     });
 
     map.leaflet.on('moveend', async () => {
@@ -120,24 +132,129 @@ async function initializeCrimes() {
         //Get incidents
         const incidents_res = await fetch(`${baseUrl}/incidents?limit=1000`);
         const incidents_json = await incidents_res.json();
+        geocodedData = await fetch('crimes_geocoded.json').then(res => res.json());
 
         console.log("Raw incidents:", incidents_json);
 
-        crimes.value = incidents_json.map(c => ({
-            case_number: c.case_number,
-            date: c.date,
-            time: c.time,
-            code: c.code,
-            incident: c.incident,
-            police_grid: c.police_grid,
-            neighborhood_number: c.neighborhood_number,
-            block: c.block
-        }));
-        visibleCrimes.value = crimes.value;
+        crimes.value = incidents_json.map(c => {
+            const geo = geocodedData.find(g => g.case_number === c.case_number) || {};
+            return {
+                case_number: c.case_number,
+                date: c.date,
+                time: c.time,
+                code: c.code,
+                incident: c.incident,
+                police_grid: c.police_grid,
+                neighborhood_number: c.neighborhood_number,
+                block: c.block,
+                lat: c.lat || geo.lat || null,
+                lng: c.lng || geo.lng || null
+            };
+        });
+
+        visibleCrimes.value = crimes.value.slice();
+        neighborhoodCounts();
         console.log("Mapped crimes length:", crimes.value.length);
+    } 
+
+function neighborhoodCounts(singleNeighborhoodNumber = null) {
+    const counts = {};
+    
+    visibleCrimes.value.forEach(c => {
+        if (c.neighborhood_number) {
+            counts[c.neighborhood_number] = (counts[c.neighborhood_number] || 0) + 1;
+        }
+    });
+
+    const update = (key, obj) => {
+        const count = counts[key] || 0;
+        obj.marker?.setPopupContent(
+            `<b>${obj.name}<br>Crimes: ${count}</b>`
+        );
+    };
+
+    if (singleNeighborhoodNumber) {
+        const n = map.neighborhood_markers[singleNeighborhoodNumber];
+        if (n) update(singleNeighborhoodNumber, n);
+    } else {
+        Object.entries(map.neighborhood_markers).forEach(([key, n]) => update(key, n));
+    }
 }
 
-let locationInput = ref('');
+function deleteCrime(case_number, neighborhood_number = null) {
+    visibleCrimes.value = visibleCrimes.value.filter(c => c.case_number !== case_number);
+
+    if (activeCrimeMarker.value && activeCrimeMarker.value.case_number === case_number) {
+        map.leaflet.removeLayer(activeCrimeMarker.value);
+        activeCrimeMarker.value = null;
+    }
+
+    if (neighborhood_number) {
+        neighborhoodCounts(neighborhood_number);
+    } else {
+        neighborhoodCounts();
+    }
+
+    const baseUrl = crime_url.value.replace(/\/+$/, "");
+    fetch(`${baseUrl}/remove-incident?case_number=${case_number}`, { method: 'DELETE' })
+        .then(res => {
+            if (!res.ok) console.error('Delete failed', res.status);
+        })
+        .catch(err => console.error(err));
+}
+
+function showCrimeOnMap(crime) {
+    if (!crime.lat || !crime.lng) {
+        alert('No geolocation available for this crime');
+        return;
+    }
+
+    if (activeCrimeMarker.value) {
+        map.leaflet.removeLayer(activeCrimeMarker.value);
+        activeCrimeMarker.value = null;
+    }
+
+    const marker = L.marker([crime.lat, crime.lng], {
+        icon: L.icon({
+            iconUrl: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+            iconSize: [25, 25]
+        })
+    });
+
+    marker.case_number = crime.case_number;
+
+    marker.bindPopup(`
+        <b>Incident: </b>${crime.incident}<br>
+        <b>Date: </b>${crime.date}<br>
+        <b>Time: </b>${crime.time}<br>
+        <b><button class="delete-btn">Delete</button></b>
+    `);
+
+    marker.on('popupopen', (e) => {
+        const popupEl = e.popup.getElement();
+        if (!popupEl) return;
+        const btn = popupEl.querySelector('.delete-btn');
+        if (btn) {
+            btn.onclick = async () => {
+                await deleteCrime(crime.case_number, crime.neighborhood_number);
+                map.leaflet.removeLayer(marker);
+                activeCrimeMarker.value = null;
+            };
+        }
+    });
+
+    // Add marker to map and open popup
+    marker.addTo(map.leaflet);
+    marker.openPopup();
+    map.leaflet.setView([crime.lat, crime.lng], 16);
+
+    activeCrimeMarker.value = marker;
+    document.getElementById('leafletmap').scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'center'
+    });
+
+}
 
 function clampLatLng(lat, lng){
     const minLat = map.bounds.se.lat;
@@ -221,13 +338,13 @@ function closeDialog() {
 
     <!-- Lat/Lon Input Box -->
     <div>
-    <dialog id="location-dialog" open>
+    <dialog id="location-dialog">
         <h1 class="dialog-header">St. Paul Crime Latitude and Longitude</h1>
         <label class="dialog-label">Location: </label>
-        <input id="dialog-url" class="dialog-input" type="url" v-model="locationInput" placeholder="Enter a location" />
-        <p class="dialog-error" v-if="dialog_err">Error: must enter an address</p>
+        <input id="location-input" class="dialog-input" type="text" v-model="locationInput" placeholder="Enter a location or lat/lng" />
+        <p class="dialog-error" v-if="!locationInput && dialog_err">Error: must enter an address or lat/lng</p>
         <br/>
-        <button class="button" type="button" @click="() => { getLocation(); closeDialog(); } ">Go</button>
+        <button class="button" type="button" @click="getLocation">Go</button>
     </dialog>
     </div>
 
@@ -262,7 +379,8 @@ function closeDialog() {
                 <th>Neighborhood</th>
                 <th>Incident</th>
                 <th>Grid</th>
-                <th></th>
+                <th>Show On Map</th>
+                <th>Delete</th>
             </tr>
         </thead>
         <tbody>
@@ -273,6 +391,13 @@ function closeDialog() {
             <td>{{c.incident}}</td>
             <td>{{c.police_grid}}</td>
             <td><button>Delete</button></td>
+            <tr v-for="c in visibleCrimes" :key="c.case_number">
+                <td>{{ c.date }}</td>
+                <td>{{ map.neighborhood_markers[c.neighborhood_number]?.name || 'Unknown' }}</td>
+                <td>{{ c.incident }}</td>
+                <td>{{ c.police_grid }}</td>
+                <td><button class="delete-btn" @click="showCrimeOnMap(c)">Show</button></td>
+                <td><button class="delete-btn" @click="deleteCrime(c.case_number, c.neighborhood_number)">Delete</button></td>
             </tr>
         </tbody>
     </table>
@@ -332,5 +457,17 @@ td {
 }
 #crime-table-container {
     width: 100%;
+}
+</style>
+<style>
+.delete-btn {
+    padding: 8px 14px;
+    background-color: #D32323;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
 }
 </style>
