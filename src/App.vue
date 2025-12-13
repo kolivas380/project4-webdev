@@ -45,6 +45,59 @@ let activeCrimeMarker = ref(null);
 let locationInput = ref('');
 let geocodedData = [];
 
+
+const crime = reactive({
+  case_number: "",
+  date: "",
+  time: "",
+  code: "",
+  incident: "",
+  police_grid: "",
+  neighborhood_number: "",
+  block: ""
+})
+
+async function submitCrime() {
+  
+  
+    // Should fail if not all inputs are filled
+    if (!crime.case_number || !crime.date || !crime.time || !crime.code || 
+      !crime.incident || !crime.police_grid || !crime.neighborhood_number || !crime.block) {
+        alert("Please fill in all fields");
+        return;
+    }
+
+
+    try {
+    const response = await fetch("http://localhost:8000/new-incident", {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(crime)
+    })
+
+    if (!response.ok) {
+      throw new Error("Failed to submit crime")
+    }
+  
+
+    // Reset form
+    crime.case_number = "";
+    crime.date = "";
+    crime.time = "";
+    crime.code = "";
+    crime.incident = "";
+    crime.police_grid = "";
+    crime.neighborhood_number = "";
+    crime.block = "";
+
+    alert("Crime submitted successfully!")
+  } catch (err) {
+    console.error(err)
+    alert("Error submitting crime")
+  }
+}
+
+
 // Vue callback for once <template> HTML has been added to web page
 onMounted(async () => {
     // Create Leaflet map (set bounds and valid zoom levels)
@@ -402,6 +455,7 @@ function closeDialog() {
 
 <template>
     <!-- St Paul Crime API Input -->
+    <h2>Find the distance between you and another location!</h2>
     <dialog id="rest-dialog" open>
         <h1 class="dialog-header">St. Paul Crime REST API</h1>
         <label class="dialog-label">URL: </label>
@@ -502,6 +556,96 @@ function closeDialog() {
         </tbody>
     </table>
      </div>
+
+
+     <!-- FORM FOR ADDING CRIME -->
+    <form class="bordered-form" @submit.prevent="submitCrime">
+        <h2> Report A Crime </h2>
+
+        <!-- Date -->
+        <div class="row">
+            <div class="large-12 columns">
+            <label>Date
+                <input v-model="crime.date" type="date" placeholder="large-12.columns" />
+            </label>
+            </div>
+        </div>
+
+
+        <!-- Time -->
+        <div class="row">
+            <div class="large-12 columns">
+            <label> Time
+                <input v-model="crime.time" type="time" placeholder="large-12.columns" />
+            </label>
+            </div>
+        </div>
+
+
+         <!-- Case Number -->
+        <div class="row">
+            <div class="large-12 columns">
+            <label>Case Number
+                <input v-model="crime.case_number" type="text"/>
+            </label>
+            </div>
+        </div>
+
+        <!-- Incident Code -->
+        <div class="row">
+            <div class="large-12 columns">
+            <label>Incident Code
+                <input v-model="crime.code" type="number" step="1"/>
+            </label>
+            </div>
+        </div>
+
+
+        <!-- Incident Text -->
+        <div class="row">
+            <div class="large-12 columns">
+            <label>Incident type
+                <input v-model="crime.incident" type="text"/>
+            </label>
+            </div>
+        </div>
+
+
+        <!-- Neighborhood Number -->
+        <div class="row">
+            <div class="large-12 columns">
+            <label>Neighborhood Number
+                <input v-model="crime.neighborhood_number" type="number" step="1"/>
+            </label>
+            </div>
+        </div>
+
+
+        <!-- Police Grid-->
+        <div class="row">
+            <div class="large-12 columns">
+            <label>Police Grid number
+                <input v-model="crime.police_grid" type="number" step="1"/>
+            </label>
+            </div>
+        </div>
+
+
+
+        <!-- Block Address -->
+        <div class="row">
+            <div class="large-12 columns">
+            <label>Block Address
+                <input v-model="crime.block" type="text" placeholder="1234 Road St." />
+            </label>
+            </div>
+        </div>
+
+
+        </br>
+        <button @click="submitCrime" type="button" class="button expanded" style="background-color:  #e84a5f;">Submit</button>
+    </form>
+
 </template>
 
 <style scoped>
