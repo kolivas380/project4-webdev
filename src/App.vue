@@ -38,6 +38,17 @@ let map = reactive(
     }
 );
 
+let crimes = ref([]);
+let visibleCrimes = ref([]);
+let codes = ref([]);
+let activeCrimeMarker = ref(null);
+let locationInput = ref('');
+let geocodedData = [];
+const selectedNeighborhoods = ref([]);
+const maxIncidents = ref(50);
+const maxIncidentOptions = ref([10, 25, 50, 100, 500, 1000]);
+
+
 const crime = reactive({
   case_number: "",
   date: "",
@@ -59,7 +70,7 @@ async function submitCrime() {
         return;
     }
 
-    
+
     try {
     const response = await fetch("http://localhost:8000/new-incident", {
       method: "PUT",
@@ -89,14 +100,6 @@ async function submitCrime() {
   }
 }
 
-
-
-let crimes = ref([]);
-let visibleCrimes = ref([]);
-let codes = ref([]);
-let activeCrimeMarker = ref(null);
-let locationInput = ref('');
-let geocodedData = [];
 
 // Vue callback for once <template> HTML has been added to web page
 onMounted(async () => {
@@ -221,7 +224,7 @@ function neighborhoodCounts(singleNeighborhoodNumber = null) {
 
     const update = (key, obj) => {
         const count = counts[key] || 0;
-        obj.marker?.setPopupContent(
+        obj.marker.setPopupContent(
             `<b>${obj.name}<br>Crimes: ${count}</b>`
         );
     };
@@ -371,6 +374,17 @@ function closeDialog() {
     }
 }
 
+
+
+function getIncidentClass(code) {
+    // Map codes to CSS class names
+    if ((code >= 100 && code <= 200) || (code >= 400 && code <= 453) || (code >= 810 && code <= 982)) return 'violent-crime';
+    if ((code >= 300 && code < 400) || (code >= 500 && code <= 613) || (code > 613 && code < 800) || (code >= 1400 && code < 1500)) return 'property-crime';
+    return 'other-crime';
+}
+
+
+
 </script>
 
 <template>
@@ -426,6 +440,9 @@ function closeDialog() {
     <!-- Crime Table -->
      <div id="crime-table-container">
         <h2>Crime Incidents</h2>
+
+
+
     <table id="crime-table">
         <thead>
             <tr>
@@ -439,7 +456,7 @@ function closeDialog() {
         </thead>
         <tbody>
             <!-- change this to use filtered crimes -->
-            <tr v-for="c in visibleCrimes" :key="c.case_number">
+            <tr v-for="c in visibleCrimes" :key="c.case_number" :class="getIncidentClass(c.code)">
                 <td>{{ c.date }}</td>
                 <td>{{ map.neighborhood_markers[c.neighborhood_number]?.name || 'Unknown' }}</td>
                 <td>{{ c.incident }}</td>
@@ -598,6 +615,18 @@ td {
 }
 #crime-table-container {
     width: 100%;
+}
+
+.violent-crime {
+    background-color: #f18f88;
+}
+
+.property-crime {
+    background-color: #99B898;
+}
+
+.other-crime {
+    background-color:  #F9F7EF;
 }
 </style>
 <style>
