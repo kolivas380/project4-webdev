@@ -455,7 +455,6 @@ function closeDialog() {
 
 <template>
     <!-- St Paul Crime API Input -->
-    <h2>Find the distance between you and another location!</h2>
     <dialog id="rest-dialog" open>
         <h1 class="dialog-header">St. Paul Crime REST API</h1>
         <label class="dialog-label">URL: </label>

@@ -88,3 +88,24 @@ a:hover {
     margin: auto;
 }
 
+.center{
+    text-align: center;
+}
+
+.names{
+    color: var(--primary);
+    font-family: "Emblema One", system-ui;
+    font-weight: 400;
+    font-style: normal;
+    font-size: 3rem;
+    text-shadow:
+    1px 1px 0 var(--secondary),
+    2px 1px 0 #EBB0AC,
+    3px 2px 0 #999;
+}
+
+.bio-text {
+  max-width: 70ch;
+  line-height: 1.7;
+  font-size: 1.3rem;
+}
