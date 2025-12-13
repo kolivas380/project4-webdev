@@ -55,7 +55,11 @@ onMounted(async () => {
         maxZoom: 18
     }).addTo(map.leaflet);
     map.leaflet.setMaxBounds([[44.883658, -93.217977], [45.008206, -92.993787]]);
+    map.leaflet.on('moveend', () => {
+        filterCrimes();
+    });
 
+    
     // Get boundaries for St. Paul neighborhoods
     let district_boundary = new L.geoJson();
     district_boundary.addTo(map.leaflet);
@@ -104,18 +108,29 @@ onMounted(async () => {
 });
 
 //Function for filtering
-const filteredNeighborhoods = ref([]);
 const defaultMaxIncidents = ref(50);
-const filterByNeighborhood = computed(() => {
+let maxIncidents = ref(defaultMaxIncidents.value);
+let maxIncidentOptions = [25, 50, 100, 150, 250, 500, 1000];
+let selectedNeighborhoods = ref([]);
+let selectedIncidents = ref([]);
+let dateRange = reactive({
+    start: '',
+    end: ''
+});
+
+const filterByNeighborhoods = computed(() => {
     return crimes.value
         .reduce((acc, c) => {
         //switch to neighborhood_name
-            if(c.neighborhood_number.name && !acc.includes(c.neighborhood_number.name)) {
-                acc.push(c.neighborhood_number.name);
-            }
-        return acc;
+            let name = map.neighborhood_markers[c.neighborhood_number]?.name;
+            if (name && !acc.includes(name)) acc.push(name);
+            return acc;
     }, [])
     .sort()
+});
+
+const uniqueIncidentTypes = computed(() => {
+    return [...new Set(crimes.value.map(c => c.incident))].sort();
 });
 
 // FUNCTIONS
@@ -151,11 +166,77 @@ async function initializeCrimes() {
                 lng: c.lng || geo.lng || null
             };
         });
-
-        visibleCrimes.value = crimes.value.slice();
+        filterCrimes();
         neighborhoodCounts();
-        console.log("Mapped crimes length:", crimes.value.length);
     } 
+const violentCrimes = [
+  "Agg. Assault",
+  "Agg. Assault Dom.",
+  "Child Abuse",
+  "Simple Assault Dom.",
+];
+
+
+const propertyCrimes = [
+  "Burglary",
+  "Auto Theft",
+  "Robbery",
+  "Criminal Damage",
+  "Theft",
+];
+
+
+function incidentType(incident) {
+    if (violentCrimes.includes(incident)) return "violent";
+    if (propertyCrimes.includes(incident)) return "property";
+    return "other";
+}
+
+function isInMapBounds(crime) {
+    if (!crime.lat || !crime.lng || !map.leaflet) return false;
+
+    const bounds = map.leaflet.getBounds();
+    return bounds.contains([crime.lat, crime.lng]);
+}
+
+
+function filterCrimes() {
+    let filtered = crimes.value;
+
+    if(map.leaflet) {
+        filtered = filtered.filter(isInMapBounds);
+    }
+
+    // Filter by neighborhoods
+    if (selectedNeighborhoods.value.length > 0) {
+        filtered = filtered.filter(c =>
+            selectedNeighborhoods.value.includes(
+                map.neighborhood_markers[c.neighborhood_number]?.name
+            )
+        );
+    }
+
+    // Filter by incident types
+    if (selectedIncidents.value.length > 0) {
+        filtered = filtered.filter(c => selectedIncidents.value.includes(c.incident));
+    }
+
+
+    // Filter by date range
+    if (dateRange.start) {
+        filtered = filtered.filter(c => c.date >= dateRange.start);
+    }
+    if (dateRange.end) {
+        filtered = filtered.filter(c => c.date <= dateRange.end);
+    }
+
+    visibleCrimes.value = filtered.slice(0, maxIncidents.value);
+    neighborhoodCounts();
+}
+
+function fetchFilterCrimes(){
+    filterCrimes();
+}
 
 function neighborhoodCounts(singleNeighborhoodNumber = null) {
     const counts = {};
@@ -205,7 +286,7 @@ function deleteCrime(case_number, neighborhood_number = null) {
 
 function showCrimeOnMap(crime) {
     if (!crime.lat || !crime.lng) {
-        alert('No geolocation available for this crime');
+        // alert('No geolocation available for this crime');
         return;
     }
 
@@ -349,28 +430,56 @@ function closeDialog() {
 
     <!-- Filter box -->
      <div id="filter-box-container">
-        <h2 style="color: black;">Filter</h2>
+        <h2 style="color: black;">Filters</h2>
+        <!-- Neighborhood checkboxes-->
         <div id="neighborhood-list">
-            <label v-for="name in filterByNeighborhood" :key="name" class="neighborhood-item" >
+            <h3 style="color: black;">Neighborhoods:</h3>
+            <label v-for="name in filterByNeighborhoods" :key="name" class="neighborhood-item" >
                 <input type="checkbox" :value="name" v-model="selectedNeighborhoods"/>
                 {{ name }}
             </label>
         </div>
-        <div id="filters">
-        <div id="filter-box-container">
-            <label for="max-incidents">Max Incidents to display:</label>
-             <select id="max-incidents" v-model.number="maxIncidents">
-            <option v-for="n in maxIncidentOptions" :key="n" :value="n">
-        {{ n }}
-      </option>
-    </select>
+        <!-- Incident Type checkboxes-->
+        <div id="incident-type-list">
+            <h3 style="color: black;">Incident Types:</h3>
+            <label v-for="type in uniqueIncidentTypes" :key="type" class="incident-type-item" >
+                <input type="checkbox" :value="type" v-model="selectedIncidents"/>
+                {{ type }}
+            </label>
         </div>
-     </div>
-     </div>
+        <!-- Date Range Inputs-->
+        <div id="date-range">
+            <h3 style="color: black;">Date Range:</h3>
+            <label for="start-date" style="color: black;">Start Date:</label>
+            <input type="date" id="start-date" v-model="dateRange.start" />
+            <br/>
+            <label for="end-date" style="color: black;">End Date:</label>
+            <input type="date" id="end-date" v-model="dateRange.end" />
+        </div>
+        <!-- Max Incidents Dropdown-->
+        <div id="max-incidents">
+            <label>Max Incidents:
+            <select v-model.number="maxIncidents">
+                <option v-for="n in maxIncidentOptions" :key="n" :value="n">{{ n }}</option>
+            </select>
+            </label>
+        </div>
+        <!-- Update button -->
+            <button class="button" @click="fetchFilterCrimes">Update Filters</button>
+        </div>
+
 
     <!-- Crime Table -->
      <div id="crime-table-container">
         <h2>Crime Incidents</h2>
+        <!-- Legend -->
+        <div id="legend" style="margin-top: 1rem;">
+            <h4>Legend</h4>
+            <div><span style="background-color:#ffb2ae; padding:0 10px;">&nbsp;</span> Violent Crimes</div>
+            <div><span style="background-color:#dee8eb; padding:0 10px;">&nbsp;</span> Property Crimes</div>
+            <div><span style="background-color:#ddd3ee; padding:0 10px;">&nbsp;</span> Other Crimes</div>
+        </div>
+
     <table id="crime-table">
         <thead>
             <tr>
@@ -378,19 +487,17 @@ function closeDialog() {
                 <th>Neighborhood</th>
                 <th>Incident</th>
                 <th>Grid</th>
-                <th>Show On Map</th>
                 <th>Delete</th>
             </tr>
         </thead>
         <tbody>
             <!-- change this to use filtered crimes -->
-            <tr v-for="c in visibleCrimes" :key="c.case_number">
+            <tr v-for="c in visibleCrimes" :key="c.case_number" :class="incidentType(c.incident)" @click="showCrimeOnMap(c)" style="cursor: pointer;">
                 <td>{{ c.date }}</td>
                 <td>{{ map.neighborhood_markers[c.neighborhood_number]?.name || 'Unknown' }}</td>
                 <td>{{ c.incident }}</td>
                 <td>{{ c.police_grid }}</td>
-                <td><button class="delete-btn" @click="showCrimeOnMap(c)">Show</button></td>
-                <td><button class="delete-btn" @click="deleteCrime(c.case_number, c.neighborhood_number)">Delete</button></td>
+                <td><button class="delete-btn" @click.stop="deleteCrime(c.case_number, c.neighborhood_number)">Delete</button></td>
             </tr>
         </tbody>
     </table>
@@ -452,6 +559,19 @@ td {
 #crime-table-container {
     width: 100%;
 }
+
+.violent {
+    background-color: #ffb2ae; /* matches your legend */
+}
+
+.property {
+    background-color: #dee8eb;
+}
+
+.other {
+    background-color: #ddd3ee;
+}
+
 </style>
 <style>
 .delete-btn {
